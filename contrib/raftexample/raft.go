@@ -477,6 +477,7 @@ func (rc *raftNode) serveRaft() {
 	close(rc.httpdonec)
 }
 
+// ywl:处理其他节点发来的请求
 func (rc *raftNode) Process(ctx context.Context, m raftpb.Message) error {
 	return rc.node.Step(ctx, m)
 }
