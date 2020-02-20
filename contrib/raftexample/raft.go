@@ -379,6 +379,10 @@ func (rc *raftNode) maybeTriggerSnapshot() {
 	rc.snapshotIndex = rc.appliedIndex
 }
 
+// 1. ywl:从 proposeC，confChangeC 取数据，然后调用Propose()，ProposeConfChange() 向核心模块提交
+// 2.a 从核心模块取回 ready 的数据(可能有快照数据) 放到 commitC. 并把 Message 发送给其他节点
+// 2.b 驱动状态机,定时调用 核心模块 tick() 函数
+
 func (rc *raftNode) serveChannels() {
 	snap, err := rc.raftStorage.Snapshot()
 	if err != nil {
@@ -397,6 +401,8 @@ func (rc *raftNode) serveChannels() {
 	go func() {
 		var confChangeCount uint64 = 0
 
+		// ywl: 从客户端收到 http 请求后，会往下面两个 channel 上塞数据
+		// ywl: 这里就是从两个 channel 取数据传给核心模块
 		for rc.proposeC != nil && rc.confChangeC != nil {
 			select {
 			case prop, ok := <-rc.proposeC:
@@ -432,10 +438,10 @@ func (rc *raftNode) serveChannels() {
 			// 将HardState，entries写入持久化存储中
 			rc.wal.Save(rd.HardState, rd.Entries)
 			if !raft.IsEmptySnap(rd.Snapshot) {
-				// 如果快照数据不为空，也需要保存快照数据到持久化存储中
-				rc.saveSnap(rd.Snapshot)
+				// ywl: 如果快照数据不为空，也需要保存快照数据到持久化存储中
+				rc.saveSnap(rd.Snapshot) // ywl: 把 rd.Snapshot 数据存到成员变量 self.snapshotter 中
 				rc.raftStorage.ApplySnapshot(rd.Snapshot)
-				rc.publishSnapshot(rd.Snapshot)
+				rc.publishSnapshot(rd.Snapshot) // ywl: 主要是往 commitC 塞 nil 来通知 kvstore.go 另一个协程
 			}
 			rc.raftStorage.Append(rd.Entries)
 			rc.transport.Send(rd.Messages)
@@ -477,6 +483,8 @@ func (rc *raftNode) serveRaft() {
 	close(rc.httpdonec)
 }
 
+// ywl: 以下 4 个函数是 rafthttp\transport.go 里面 type Raft interface 的方法
+// transport 成员变量持有了 rc *raftNode
 // ywl:处理其他节点发来的请求
 func (rc *raftNode) Process(ctx context.Context, m raftpb.Message) error {
 	return rc.node.Step(ctx, m)

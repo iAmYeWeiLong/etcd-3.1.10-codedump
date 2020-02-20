@@ -61,11 +61,17 @@ func (s *kvstore) Propose(k string, v string) {
 	s.proposeC <- string(buf.Bytes())
 }
 
+// ywl:协程 proc函数。写数据到状态机。从 commitC 取数据恢复快照 或是 写 kv 表
 func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 	for data := range commitC {
+		// ywl:约定 data == nil 时表示有快照
+		// raftexample\raft.go 里面 func (rc *raftNode) publishSnapshot(snapshotToSave raftpb.Snapshot)
+		// 里面有放 塞 nil 进来
 		if data == nil {
 			// done replaying log; new data incoming
 			// OR signaled to load snapshot
+
+			// ywl: s.snapshotter 是 raftexample\raft.go 的 type raftNode struct 的成员变量叫 snapshotter
 			snapshot, err := s.snapshotter.Load()
 			if err == snap.ErrNoSnapshot {
 				return
@@ -86,7 +92,7 @@ func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 			log.Fatalf("raftexample: could not decode message (%v)", err)
 		}
 		s.mu.Lock()
-		s.kvStore[dataKv.Key] = dataKv.Val
+		s.kvStore[dataKv.Key] = dataKv.Val // ywl： 应用到状态机
 		s.mu.Unlock()
 	}
 	if err, ok := <-errorC; ok {
@@ -100,6 +106,7 @@ func (s *kvstore) getSnapshot() ([]byte, error) {
 	return json.Marshal(s.kvStore)
 }
 
+// ywl: 从快照恢复数据到状态机上
 func (s *kvstore) recoverFromSnapshot(snapshot []byte) error {
 	var store map[string]string
 	if err := json.Unmarshal(snapshot, &store); err != nil {
