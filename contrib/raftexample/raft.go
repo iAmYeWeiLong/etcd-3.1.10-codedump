@@ -463,6 +463,7 @@ func (rc *raftNode) serveChannels() {
 	}
 }
 
+// ywl:n 个节点之间互相通讯用的
 func (rc *raftNode) serveRaft() {
 	url, err := url.Parse(rc.peers[rc.id-1])
 	if err != nil {
