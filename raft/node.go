@@ -316,7 +316,7 @@ func (n *node) run(r *raft) {
 	for {
 		if advancec != nil {
 			// advance channel不为空，说明还在等应用调用Advance接口通知已经处理完毕了本次的ready数据
-			readyc = nil
+			readyc = nil // ywl: 那就不对外输出结果数据
 		} else {
 			rd = newReady(r, prevSoftSt, prevHardSt)
 			if rd.containsUpdates() {
@@ -420,7 +420,7 @@ func (n *node) run(r *raft) {
 			r.msgs = nil
 			r.readStates = nil
 			// 修改advance channel不为空，等待接收advance消息
-			advancec = n.advancec
+			advancec = n.advancec // ywl:表达的意思是: ready 数据我给你了，处理完了你 调用 Advance() 一下
 		case <-advancec:
 			// 收到advance channel的消息
 			if prevHardSt.Commit != 0 {
@@ -433,7 +433,7 @@ func (n *node) run(r *raft) {
 				havePrevLastUnstablei = false
 			}
 			r.raftLog.stableSnapTo(prevSnapi)
-			advancec = nil
+			advancec = nil // ywl: 使得上面的 for 循环走进 产生 ready 数据的分支
 		case c := <-n.status:
 			c <- getStatus(r)
 		case <-n.stop:
@@ -482,7 +482,7 @@ func (n *node) ProposeConfChange(ctx context.Context, cc pb.ConfChange) error {
 // if any.
 func (n *node) step(ctx context.Context, m pb.Message) error {
 	ch := n.recvc
-	if m.Type == pb.MsgProp {
+	if m.Type == pb.MsgProp { // ywl: 只有 pb.MsgProp 是本地请求，其他都是外部请求
 		ch = n.propc
 	}
 
