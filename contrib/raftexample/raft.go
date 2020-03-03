@@ -140,6 +140,7 @@ func (rc *raftNode) entriesToApply(ents []raftpb.Entry) (nents []raftpb.Entry) {
 
 // publishEntries writes committed log entries to commit channel and returns
 // whether all entries could be published.
+// ywl: 把数据塞到 commitC；节点变化信息则直接应用
 func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 	for i := range ents {
 		switch ents[i].Type {
@@ -410,7 +411,7 @@ func (rc *raftNode) serveChannels() {
 					rc.proposeC = nil
 				} else {
 					// blocks until accepted by raft state machine
-					rc.node.Propose(context.TODO(), []byte(prop))
+					rc.node.Propose(context.TODO(), []byte(prop)) // ywl: 也不是直接调用，只是提交到 另一个 channel
 				}
 
 			case cc, ok := <-rc.confChangeC:
@@ -419,7 +420,7 @@ func (rc *raftNode) serveChannels() {
 				} else {
 					confChangeCount += 1
 					cc.ID = confChangeCount
-					rc.node.ProposeConfChange(context.TODO(), cc)
+					rc.node.ProposeConfChange(context.TODO(), cc) // ywl: 也不是直接调用，只是提交到 另一个 channel
 				}
 			}
 		}
@@ -431,7 +432,7 @@ func (rc *raftNode) serveChannels() {
 	for {
 		select {
 		case <-ticker.C:
-			rc.node.Tick()
+			rc.node.Tick() // ywl: 也不是直接调用，只是提交到一个信号到 另一个 channel
 
 		// store raft entries to wal, then publish over commit channel
 		case rd := <-rc.node.Ready():

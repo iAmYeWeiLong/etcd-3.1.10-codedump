@@ -37,7 +37,7 @@ var (
 
 // SoftState provides state that is useful for logging and debugging.
 // The state is volatile and does not need to be persisted to the WAL.
-// 软状态是异变的，包括：当前集群leader、当前节点状态
+// 软状态是异变的,包括：当前集群leader、当前节点状态
 // 这部分数据不需要存储到持久化中
 type SoftState struct {
 	Lead      uint64 // must use atomic operations to access; keep 64-bit aligned.
@@ -51,20 +51,20 @@ func (a *SoftState) equal(b *SoftState) bool {
 // Ready encapsulates the entries and messages that are ready to read,
 // be saved to stable storage, committed or sent to other peers.
 // All fields in Ready are read-only.
-// Ready结构体用于保存已经处于ready状态的日志和消息，这些都是准备保存到持久化存储中、提交或者发送给其他节点的
+// Ready结构体用于保存已经处于ready状态的日志和消息,这些都是准备保存到持久化存储中、提交或者发送给其他节点的
 // Ready结构体的所有数据都是只读状态
 type Ready struct {
 	// The current volatile state of a Node.
 	// SoftState will be nil if there is no update.
 	// It is not required to consume or store SoftState.
-	// 软状态是异变的，包括：当前集群leader、当前节点状态
+	// 软状态是异变的,包括：当前集群leader、当前节点状态
 	*SoftState
 
 	// The current state of a Node to be saved to stable storage BEFORE
 	// Messages are sent.
 	// HardState will be equal to empty state if there is no update.
-	// 硬状态需要被保存，包括：节点当前Term、Vote、Commit
-	// 如果当前这部分没有更新，则等于空状态
+	// 硬状态需要被保存,包括：节点当前Term、Vote、Commit
+	// 如果当前这部分没有更新,则等于空状态
 	pb.HardState
 
 	// ReadStates can be used for node to serve linearizable read requests locally
@@ -86,14 +86,14 @@ type Ready struct {
 	// CommittedEntries specifies entries to be committed to a
 	// store/state-machine. These have previously been committed to stable
 	// store.
-	// 需要输入到状态机中的数据数组，这些数据之前已经被保存到持久化存储中了
+	// 需要输入到状态机中的数据数组,这些数据之前已经被保存到持久化存储中了
 	CommittedEntries []pb.Entry
 
 	// Messages specifies outbound messages to be sent AFTER Entries are
 	// committed to stable storage.
 	// If it contains a MsgSnap message, the application MUST report back to raft
 	// when the snapshot has been received or has failed by calling ReportSnapshot.
-	// 在entries被写入持久化存储中以后，需要发送出去的数据
+	// 在entries被写入持久化存储中以后,需要发送出去的数据
 	Messages []pb.Message
 }
 
@@ -122,16 +122,16 @@ func (rd Ready) containsUpdates() bool {
 type Node interface {
 	// Tick increments the internal logical clock for the Node by a single tick. Election
 	// timeouts and heartbeat timeouts are in units of ticks.
-	// 应用层每次tick时需要调用该函数，将会由这里驱动raft的一些操作比如选举等。
-	// 至于tick的单位是多少由应用层自己决定，只要保证是恒定时间都会来调用一次就好了
+	// 应用层每次tick时需要调用该函数,将会由这里驱动raft的一些操作比如选举等。
+	// 至于tick的单位是多少由应用层自己决定,只要保证是恒定时间都会来调用一次就好了
 	Tick()
 
 	// Campaign causes the Node to transition to candidate state and start campaigning to become leader.
-	// 调用该函数将驱动节点进入候选人状态，进而将竞争leader
+	// 调用该函数将驱动节点进入候选人状态,进而将竞争leader
 	Campaign(ctx context.Context) error
 
 	// Propose proposes that data be appended to the log.
-	// 提议写入数据到日志中，可能会返回错误
+	// 提议写入数据到日志中,可能会返回错误
 	Propose(ctx context.Context, data []byte) error
 
 	// ProposeConfChange proposes config change.
@@ -149,7 +149,7 @@ type Node interface {
 	//
 	// NOTE: No committed entries from the next Ready may be applied until all committed entries
 	// and snapshots from the previous one have finished.
-	// 这里是核心函数，将返回Ready的channel，应用层需要关注这个channel，当发生变更时将其中的数据进行操作
+	// 这里是核心函数,将返回Ready的channel,应用层需要关注这个channel,当发生变更时将其中的数据进行操作
 	Ready() <-chan Ready
 
 	// Advance notifies the Node that the application has saved progress up to the last Ready.
@@ -161,7 +161,7 @@ type Node interface {
 	// commands. For example. when the last Ready contains a snapshot, the application might take
 	// a long time to apply the snapshot data. To continue receiving Ready without blocking raft
 	// progress, it can call Advance before finishing applying the last ready.
-	// Advance函数是当使用者已经将上一次Ready数据处理之后，调用该函数告诉raft库可以进行下一步的操作
+	// Advance函数是当使用者已经将上一次Ready数据处理之后,调用该函数告诉raft库可以进行下一步的操作
 	Advance()
 
 	// ApplyConfChange applies config change to the local node.
@@ -252,11 +252,11 @@ func RestartNode(c *Config) Node {
 // node is the canonical implementation of the Node interface
 type node struct {
 	// 提交本地请求数据用的channel
-	propc      chan pb.Message
+	propc chan pb.Message
 	// 接收外部请求数据用的channel
-	recvc      chan pb.Message
+	recvc chan pb.Message
 	// 接收配置更新的channel
-	confc      chan pb.ConfChange
+	confc chan pb.ConfChange
 	// 接收最新配置状态的channel
 	confstatec chan pb.ConfState
 	readyc     chan Ready
@@ -300,6 +300,8 @@ func (n *node) Stop() {
 }
 
 // node的主循环
+// ywl 输入：propc,recvc,confc,tickc,advancec
+// ywl 输出：readyc
 func (n *node) run(r *raft) {
 	var propc chan pb.Message
 	var readyc chan Ready
@@ -315,12 +317,12 @@ func (n *node) run(r *raft) {
 
 	for {
 		if advancec != nil {
-			// advance channel不为空，说明还在等应用调用Advance接口通知已经处理完毕了本次的ready数据
+			// advance channel不为空,说明还在等应用调用Advance接口通知已经处理完毕了本次的ready数据
 			readyc = nil // ywl: 那就不对外输出结果数据
 		} else {
 			rd = newReady(r, prevSoftSt, prevHardSt)
 			if rd.containsUpdates() {
-				// 如果这次ready消息有包含更新，那么ready channel就不为空
+				// 如果这次ready消息有包含更新,那么ready channel就不为空
 				readyc = n.readyc
 			} else {
 				// 否则为空
@@ -330,7 +332,7 @@ func (n *node) run(r *raft) {
 
 		if lead != r.lead {
 			// 如果leader发生了变化
-			if r.hasLeader() {	// 如果原来有leader
+			if r.hasLeader() { // 如果原来有leader
 				if lead == None {
 					// 当前没有leader
 					r.logger.Infof("raft.node: %x elected leader %x at term %d", r.id, r.lead, r.Term)
@@ -338,10 +340,10 @@ func (n *node) run(r *raft) {
 					// leader发生了改变
 					r.logger.Infof("raft.node: %x changed leader from %x to %x at term %d", r.id, lead, r.lead, r.Term)
 				}
-				// 有leader，那么可以进行数据提交，prop channel不为空
+				// 有leader,那么可以进行数据提交,prop channel不为空
 				propc = n.propc
 			} else {
-				// 否则，prop channel为空
+				// 否则,prop channel为空
 				r.logger.Infof("raft.node: %x lost leader %x at term %d", r.id, lead, r.Term)
 				propc = nil
 			}
@@ -366,7 +368,7 @@ func (n *node) run(r *raft) {
 		case cc := <-n.confc:
 			// 接收到配置发生变化的消息
 			if cc.NodeID == None {
-				// NodeId为空的情况，只需要直接返回当前的nodes就好
+				// NodeId为空的情况,只需要直接返回当前的nodes就好
 				r.resetPendingConf()
 				select {
 				case n.confstatec <- pb.ConfState{Nodes: r.nodes()}:
@@ -380,7 +382,7 @@ func (n *node) run(r *raft) {
 			case pb.ConfChangeRemoveNode:
 				// block incoming proposal when local node is
 				// removed
-				// 如果删除的是本节点，停止提交
+				// 如果删除的是本节点,停止提交
 				if cc.NodeID == r.id {
 					propc = nil
 				}
@@ -395,12 +397,12 @@ func (n *node) run(r *raft) {
 			case n.confstatec <- pb.ConfState{Nodes: r.nodes()}:
 			case <-n.done:
 			}
-		case <-n.tickc:
-			r.tick()
+		case <-n.tickc: // ywl: 读取外部定时发过来的信号
+			r.tick() // ywl: 调用的是  raft.tickElection() 或  raft.tickHeartbeat()
 		case readyc <- rd:
 			// 通过channel写入ready数据
 
-			// 以下先把ready的值保存下来，等待下一次循环使用，或者当advance调用完毕之后用于修改raftLog的
+			// 以下先把ready的值保存下来,等待下一次循环使用,或者当advance调用完毕之后用于修改raftLog的
 			if rd.SoftState != nil {
 				prevSoftSt = rd.SoftState
 			}
@@ -419,8 +421,8 @@ func (n *node) run(r *raft) {
 
 			r.msgs = nil
 			r.readStates = nil
-			// 修改advance channel不为空，等待接收advance消息
-			advancec = n.advancec // ywl:表达的意思是: ready 数据我给你了，处理完了你 调用 Advance() 一下
+			// 修改advance channel不为空,等待接收advance消息
+			advancec = n.advancec // ywl:表达的意思是: ready 数据我给你了,处理完了你 调用 Advance() 一下
 		case <-advancec:
 			// 收到advance channel的消息
 			if prevHardSt.Commit != 0 {
@@ -445,9 +447,10 @@ func (n *node) run(r *raft) {
 
 // Tick increments the internal logical clock for this Node. Election timeouts
 // and heartbeat timeouts are in units of ticks.
+// ywl: 外部定时驱动
 func (n *node) Tick() {
 	select {
-	// 向tick channel写入空数据，唤醒之
+	// 向tick channel写入空数据,唤醒之
 	case n.tickc <- struct{}{}:
 	case <-n.done:
 	default:
@@ -482,7 +485,7 @@ func (n *node) ProposeConfChange(ctx context.Context, cc pb.ConfChange) error {
 // if any.
 func (n *node) step(ctx context.Context, m pb.Message) error {
 	ch := n.recvc
-	if m.Type == pb.MsgProp { // ywl: 只有 pb.MsgProp 是本地请求，其他都是外部请求
+	if m.Type == pb.MsgProp { // ywl: 只有 pb.MsgProp 是本地请求,其他都是外部请求
 		ch = n.propc
 	}
 
@@ -505,7 +508,8 @@ func (n *node) Advance() {
 	}
 }
 
-// 应用配置更新，返回当前配置状态
+// 应用配置更新,返回当前配置状态
+// ywl: 输入到 confc ，输出从 confstatec 取出来。【同步等待】
 func (n *node) ApplyConfChange(cc pb.ConfChange) *pb.ConfState {
 	var cs pb.ConfState
 	select {
@@ -563,11 +567,11 @@ func (n *node) ReadIndex(ctx context.Context, rctx []byte) error {
 func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	rd := Ready{
 		// entries保存的是没有持久化的数据数组
-		Entries:          r.raftLog.unstableEntries(),
+		Entries: r.raftLog.unstableEntries(),
 		// 保存committed但是还没有applied的数据数组
 		CommittedEntries: r.raftLog.nextEnts(),
 		// 保存待发送的消息
-		Messages:         r.msgs,
+		Messages: r.msgs,
 	}
 	if softSt := r.softState(); !softSt.equal(prevSoftSt) {
 		rd.SoftState = softSt
@@ -576,7 +580,7 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 		rd.HardState = hardSt
 	}
 	if r.raftLog.unstable.snapshot != nil {
-		// 如果未持久化的快照数据存在，也需要返回去
+		// 如果未持久化的快照数据存在,也需要返回去
 		rd.Snapshot = *r.raftLog.unstable.snapshot
 	}
 	if len(r.readStates) != 0 {
