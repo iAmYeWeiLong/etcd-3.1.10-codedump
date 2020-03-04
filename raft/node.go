@@ -464,6 +464,7 @@ func (n *node) Propose(ctx context.Context, data []byte) error {
 	return n.step(ctx, pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
 }
 
+// ywl: 其中之一是： 兄弟节点传消息过来后，然后直接调用到这个函数
 func (n *node) Step(ctx context.Context, m pb.Message) error {
 	// ignore unexpected local messages receiving over network
 	if IsLocalMsg(m.Type) {

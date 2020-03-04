@@ -159,7 +159,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			cc.Unmarshal(ents[i].Data)
-			rc.confState = *rc.node.ApplyConfChange(cc)
+			rc.confState = *rc.node.ApplyConfChange(cc) // ywl：同步等待结果
 			switch cc.Type {
 			case raftpb.ConfChangeAddNode:
 				if len(cc.Context) > 0 {
@@ -380,7 +380,7 @@ func (rc *raftNode) maybeTriggerSnapshot() {
 	rc.snapshotIndex = rc.appliedIndex
 }
 
-// 1. ywl:从 proposeC，confChangeC 取数据，然后调用Propose()，ProposeConfChange() 向核心模块提交
+// 1. ywl:从 proposeC,confChangeC 取数据，然后调用Propose()，ProposeConfChange() 向核心模块提交
 // 2.a 从核心模块取回 ready 的数据(可能有快照数据) 放到 commitC. 并把 Message 发送给其他节点
 // 2.b 驱动状态机,定时调用 核心模块 tick() 函数
 
