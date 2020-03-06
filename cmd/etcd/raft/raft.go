@@ -541,7 +541,7 @@ func (r *raft) tickHeartbeat() {
 		// 如果超过了选举时间
 		r.electionElapsed = 0
 		if r.checkQuorum {
-			r.Step(pb.Message{From: r.id, Type: pb.MsgCheckQuorum})
+			r.Step(pb.Message{From: r.id, Type: pb.MsgCheckQuorum}) // ywl: 纯捣乱的，就是本地调用
 		}
 		// If current leader cannot transfer leadership in electionTimeout, it becomes leader again.
 		if r.state == StateLeader && r.leadTransferee != None {

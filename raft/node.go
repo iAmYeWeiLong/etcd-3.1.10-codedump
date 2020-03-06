@@ -458,8 +458,10 @@ func (n *node) Tick() {
 	}
 }
 
+// ywl: 暂时没有发现哪里调用到这里？？！！！
 func (n *node) Campaign(ctx context.Context) error { return n.step(ctx, pb.Message{Type: pb.MsgHup}) }
 
+// ywl: 收到的 http 请求 最终从这里提交
 func (n *node) Propose(ctx context.Context, data []byte) error {
 	return n.step(ctx, pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
 }
@@ -474,6 +476,7 @@ func (n *node) Step(ctx context.Context, m pb.Message) error {
 	return n.step(ctx, m)
 }
 
+// ywl: 收到的 http 请求 最终从这里提交
 func (n *node) ProposeConfChange(ctx context.Context, cc pb.ConfChange) error {
 	data, err := cc.Marshal()
 	if err != nil {
@@ -484,6 +487,7 @@ func (n *node) ProposeConfChange(ctx context.Context, cc pb.ConfChange) error {
 
 // Step advances the state machine using msgs. The ctx.Err() will be returned,
 // if any.
+// ywl: 上面很多对外的接口，都通过调用这个函数来实现的
 func (n *node) step(ctx context.Context, m pb.Message) error {
 	ch := n.recvc
 	if m.Type == pb.MsgProp { // ywl: 只有 pb.MsgProp 是本地请求,其他都是外部请求
@@ -552,6 +556,7 @@ func (n *node) ReportSnapshot(id uint64, status SnapshotStatus) {
 	}
 }
 
+// ywl: 暂时没有发现哪里有调用。。从哪里发出来的消息
 func (n *node) TransferLeadership(ctx context.Context, lead, transferee uint64) {
 	select {
 	// manually set 'from' and 'to', so that leader can voluntarily transfers its leadership
