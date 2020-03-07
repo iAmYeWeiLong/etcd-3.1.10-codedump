@@ -445,7 +445,7 @@ func (rc *raftNode) serveChannels() {
 				rc.publishSnapshot(rd.Snapshot) // ywl: 主要是往 commitC 塞 nil 来通知 kvstore.go 另一个协程
 			}
 			rc.raftStorage.Append(rd.Entries)
-			rc.transport.Send(rd.Messages)
+			rc.transport.Send(rd.Messages) // ywl: raft 节点产生的各种消息。最终是在这里真正地发送出去给兄弟节点。
 			if ok := rc.publishEntries(rc.entriesToApply(rd.CommittedEntries)); !ok {
 				rc.stop()
 				return

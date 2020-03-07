@@ -752,7 +752,7 @@ func (r *raft) poll(id uint64, t pb.MessageType, v bool) (granted int) {
 
 // raft的状态机
 // ywl: tickElection tickHeartbeat 会调用到这里来
-// ywl: 本地http收到的消息 和 兄弟发过来的消息。。。也会调用到这里
+// ywl: 本地http收到的消息 和 兄弟发过来的消息。。。也会间接调用到这里(通过 channel 交互)
 func (r *raft) Step(m pb.Message) error {
 	r.logger.Infof("from:%d, to:%d, type:%s, term:%d, state:%v", m.From, m.To, m.Type, r.Term, r.state)
 
