@@ -877,7 +877,7 @@ func (r *raft) Step(m pb.Message) error {
 				r.electionElapsed = 0
 				r.Vote = m.From
 			}
-		} else {
+		} else { // ywl: Leader 也是走这里。如果自身是 Leader ，则 r.Vote 指向自身
 			// 否则拒绝投票
 			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected %s from %x [logterm: %d, index: %d] at term %d",
 				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.Type, m.From, m.LogTerm, m.Index, r.Term)
@@ -897,13 +897,13 @@ type stepFunc func(r *raft, m pb.Message)
 func stepLeader(r *raft, m pb.Message) {
 	// These message types do not require any progress for m.From.
 	switch m.Type {
-	case pb.MsgBeat:
+	case pb.MsgBeat: // ywl: 内部消息
 		// 广播HB消息
 		r.bcastHeartbeat()
 		return
-	case pb.MsgCheckQuorum:
+	case pb.MsgCheckQuorum: // ywl: 内部消息
 		// 检查集群可用性
-		if !r.checkQuorumActive() {
+		if !r.checkQuorumActive() { // ywl: 我以为是要向兄弟节点发包来证明自己是老大，没有想到只是本地检查了一下。
 			// 如果超过半数的服务器没有活跃
 			r.logger.Warningf("%x stepped down to follower since quorum is not active", r.id)
 			// 变成follower状态
@@ -953,7 +953,7 @@ func stepLeader(r *raft, m pb.Message) {
 			// 如果不相等说明这是一个新的leader，而在它当选之后还没有提交任何数据
 			if r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(r.raftLog.committed)) != r.Term {
 				// Reject read only request when this leader has not committed any log entry at its term.
-				return
+				return // ywl: 不回复别人的请求的吗？？就这么 return 完事了！
 			}
 
 			// thinking: use an interally defined context instead of the user given context.

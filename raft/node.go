@@ -556,7 +556,7 @@ func (n *node) ReportSnapshot(id uint64, status SnapshotStatus) {
 	}
 }
 
-// ywl: 暂时没有发现哪里有调用。。从哪里发出来的消息
+// ywl: 暂时没有发现哪里有调用。。从哪里发出来的消息。估计是给 客户端发请求
 func (n *node) TransferLeadership(ctx context.Context, lead, transferee uint64) {
 	select {
 	// manually set 'from' and 'to', so that leader can voluntarily transfers its leadership
@@ -566,6 +566,7 @@ func (n *node) TransferLeadership(ctx context.Context, lead, transferee uint64) 
 	}
 }
 
+// ywl: 网上的意思这个是客户端发起读请求； rctx 是客户端读请求的唯一标识
 func (n *node) ReadIndex(ctx context.Context, rctx []byte) error {
 	return n.step(ctx, pb.Message{Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: rctx}}})
 }
