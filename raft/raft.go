@@ -936,7 +936,7 @@ func stepLeader(r *raft, m pb.Message) {
 					// 如果当前为还没有处理的配置变化请求，则其他配置变化的数据暂时忽略
 					r.logger.Infof("propose conf %s ignored since pending unapplied configuration", e.String())
 					// 将这个数据置空
-					m.Entries[i] = pb.Entry{Type: pb.EntryNormal}
+					m.Entries[i] = pb.Entry{Type: pb.EntryNormal} // ywl: 可以这样直接丢数据，且不回复的吗！！？？
 				}
 				// 置位有还没有处理的配置变化数据
 				r.pendingConf = true
@@ -1207,7 +1207,7 @@ func stepFollower(r *raft, m pb.Message) {
 		if r.lead == None {
 			// 没有leader则提交失败，忽略
 			r.logger.Infof("%x no leader at term %d; dropping proposal", r.id, r.Term)
-			return
+			return // ywl: 不需要对外反馈失败的吗？？
 		}
 		// 向leader进行redirect
 		m.To = r.lead
