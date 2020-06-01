@@ -355,7 +355,7 @@ func (n *node) run(r *raft) {
 		// described in raft dissertation)
 		// Currently it is dropped in Step silently.
 		case m := <-propc:
-			// 处理本地收到的提交值
+			// 处理本地收到的提交值 （有 2 种，pb.EntryNormal 和 pb.EntryConfChange）
 			m.From = r.id
 			r.Step(m)
 		case m := <-n.recvc:
@@ -463,10 +463,12 @@ func (n *node) Campaign(ctx context.Context) error { return n.step(ctx, pb.Messa
 
 // ywl: 收到的 http 请求 最终从这里提交
 func (n *node) Propose(ctx context.Context, data []byte) error {
+	// ywl: EntryType 默认为是 0 ，即是 pb.EntryNormal
 	return n.step(ctx, pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
 }
 
 // ywl: 其中之一是： 兄弟节点传消息过来后，然后直接调用到这个函数
+// ywl: 其中之一是： 收到客户端发来的 ProposeConfChange 后，然后间接调用到这个函数
 func (n *node) Step(ctx context.Context, m pb.Message) error {
 	// ignore unexpected local messages receiving over network
 	if IsLocalMsg(m.Type) {
@@ -490,7 +492,7 @@ func (n *node) ProposeConfChange(ctx context.Context, cc pb.ConfChange) error {
 // ywl: 上面很多对外的接口，都通过调用这个函数来实现的
 func (n *node) step(ctx context.Context, m pb.Message) error {
 	ch := n.recvc
-	if m.Type == pb.MsgProp { // ywl: 只有 pb.MsgProp 是本地请求,其他都是外部请求
+	if m.Type == pb.MsgProp { // ywl: 只有 pb.MsgProp 是本地请求（有 2 种，pb.EntryNormal 和 pb.EntryConfChange）,其他都是外部请求
 		ch = n.propc
 	}
 

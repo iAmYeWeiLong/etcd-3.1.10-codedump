@@ -61,7 +61,7 @@ func (s *kvstore) Propose(k string, v string) {
 	s.proposeC <- string(buf.Bytes())
 }
 
-// ywl:协程 proc函数。写数据到状态机。从 commitC 取数据恢复快照 或是 写 kv 表
+// ywl:协程 proc函数; 写数据到状态机; 从 commitC 取数据恢复快照 或是 写 kv 表
 func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 	for data := range commitC {
 		// ywl:约定 data == nil 时表示有快照

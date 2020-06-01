@@ -582,7 +582,7 @@ func (r *raft) tickElection() {
 		// 如果可以被提升为leader，同时选举时间也到了
 		r.electionElapsed = 0
 		// 发送HUP消息是为了重新开始选举
-		r.Step(pb.Message{From: r.id, Type: pb.MsgHup}) // ywl: 就是普通的直接函数调用
+		r.Step(pb.Message{From: r.id, Type: pb.MsgHup}) // ywl: 普通的函数调用，搞个消息出来弄晕人
 	}
 }
 
@@ -596,7 +596,7 @@ func (r *raft) tickHeartbeat() {
 		// 如果超过了选举时间
 		r.electionElapsed = 0
 		if r.checkQuorum {
-			r.Step(pb.Message{From: r.id, Type: pb.MsgCheckQuorum})
+			r.Step(pb.Message{From: r.id, Type: pb.MsgCheckQuorum}) // ywl: 普通的函数调用，搞个消息出来弄晕人
 		}
 		// If current leader cannot transfer leadership in electionTimeout, it becomes leader again.
 		if r.state == StateLeader && r.leadTransferee != None {
@@ -614,7 +614,7 @@ func (r *raft) tickHeartbeat() {
 		// 向集群中其他节点发送广播消息
 		r.heartbeatElapsed = 0
 		// 尝试发送MsgBeat消息
-		r.Step(pb.Message{From: r.id, Type: pb.MsgBeat})
+		r.Step(pb.Message{From: r.id, Type: pb.MsgBeat}) // ywl: 普通的函数调用，搞个消息出来弄晕人
 	}
 }
 
@@ -833,7 +833,7 @@ func (r *raft) Step(m pb.Message) error {
 	}
 
 	switch m.Type {
-	case pb.MsgHup: // ywl: 不用于节点间通信，仅用于发送给本节点让本节点进行选举
+	case pb.MsgHup: // ywl: 不是兄弟节点发来的消息，也不是客户端发来的消息，仅用于发送给本节点让本节点进行选举
 		// 收到HUP消息，说明准备进行选举
 		if r.state != StateLeader {
 			// 当前不是leader
@@ -884,6 +884,7 @@ func (r *raft) Step(m pb.Message) error {
 			r.send(pb.Message{To: m.From, Type: voteRespMsgType(m.Type), Reject: true})
 		}
 
+	// ywl: 这里的 default: 是哪个几个消息？？？
 	default:
 		// 其他情况下进入各种状态下自己定制的状态机函数
 		r.step(r, m)
@@ -897,11 +898,11 @@ type stepFunc func(r *raft, m pb.Message)
 func stepLeader(r *raft, m pb.Message) {
 	// These message types do not require any progress for m.From.
 	switch m.Type {
-	case pb.MsgBeat: // ywl: 内部消息
+	case pb.MsgBeat: // ywl: 不是兄弟节点发来的消息，也不是客户端发来的消息，内部消息
 		// 广播HB消息
 		r.bcastHeartbeat()
 		return
-	case pb.MsgCheckQuorum: // ywl: 内部消息
+	case pb.MsgCheckQuorum: // ywl:  ywl: 不是兄弟节点发来的消息，也不是客户端发来的消息，内部消息
 		// 检查集群可用性
 		if !r.checkQuorumActive() { // ywl: 我以为是要向兄弟节点发包来证明自己是老大，没有想到只是本地检查了一下。
 			// 如果超过半数的服务器没有活跃

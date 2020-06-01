@@ -435,6 +435,7 @@ func (rc *raftNode) serveChannels() {
 			rc.node.Tick() // ywl: 也不是直接调用，只是提交到一个信号到 另一个 channel
 
 		// store raft entries to wal, then publish over commit channel
+		// ywl: 从核心模块取 ready 数据
 		case rd := <-rc.node.Ready():
 			// 将HardState，entries写入持久化存储中
 			rc.wal.Save(rd.HardState, rd.Entries)

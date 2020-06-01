@@ -10,14 +10,14 @@ option (gogoproto.goproto_getters_all) = false;
 option (gogoproto.goproto_enum_prefix_all) = false;
 
 enum EntryType {
-	EntryNormal     = 0;
-	EntryConfChange = 1;
+	EntryNormal     = 0; // ywl: 是对状态机的操作
+	EntryConfChange = 1; // ywl: 对当前集群配置进行更改的操作，比如增加或者减少节点
 }
 
 message Entry {
 	optional uint64     Term  = 2 [(gogoproto.nullable) = false]; // must be 64-bit aligned for atomic operations
 	optional uint64     Index = 3 [(gogoproto.nullable) = false]; // must be 64-bit aligned for atomic operations
-	optional EntryType  Type  = 1 [(gogoproto.nullable) = false];
+	optional EntryType  Type  = 1 [(gogoproto.nullable) = false]; // ywl: 决定了下面字段的内容
 	optional bytes      Data  = 4;
 }
 
@@ -32,6 +32,8 @@ message Snapshot {
 	optional SnapshotMetadata metadata = 2 [(gogoproto.nullable) = false];
 }
 
+
+// ywl: 太乱了，把客户端发来的消息，兄弟节点发来消息，同一个协程的消息 全放在一起！！！！！
 enum MessageType {
 	MsgHup             = 0;
 	MsgBeat            = 1;
